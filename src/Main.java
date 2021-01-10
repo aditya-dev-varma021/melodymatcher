@@ -1,6 +1,8 @@
 import javax.sound.sampled.*;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 
 public class Main {
@@ -11,6 +13,10 @@ public class Main {
     public static void main(String[] args) {
         openLines();
         captureAudio();
+        byte[] in = loadAsBytes("input.wav");
+        System.out.println("Playing Audio...");
+        playAudio();
+        System.out.println("Audio finished.");
 
     }
 
@@ -24,7 +30,7 @@ public class Main {
         }
     }
 
-    /* Plays Audio from an existing WAV file. */
+    /* Plays Audio from an existing WAVE file. */
     public static void playAudio() {
         Mixer.Info[] totalInfo = AudioSystem.getMixerInfo(); //contains all the open line info
         //Default audio device is generally the primary index.
@@ -37,7 +43,7 @@ public class Main {
         }
 
         try {
-            URL sound = Main.class.getResource("rec.wav");
+            URL sound = Main.class.getResource("input.wav");
             AudioInputStream audioStream = AudioSystem.getAudioInputStream(sound);
             mainClip.open(audioStream);
         }catch(LineUnavailableException e) {
@@ -68,16 +74,19 @@ public class Main {
                 System.err.println("Unsupported Line");
             }
             TargetDataLine tLine = (TargetDataLine)AudioSystem.getLine(secure);
-            tLine.open();
+            System.out.println("TargetDataLine is " + tLine.toString());
             int user = 0;
             System.out.println("Are you ready to begin recording? (Enter '1')");
             user = new java.util.Scanner(System.in).nextInt(); // generally do not advise ad-hoc scanner production like this
             if (user == 1) {
+                System.out.println("Starting recording...");
+                tLine.open();
                 tLine.start();
                 Thread recorder = new Thread() {
                     @Override public void run() {
                         AudioInputStream inp = new AudioInputStream(tLine);
-                        File audio = new File("input.wav");
+                        File audio = new File("src/input.wav");
+
                         try {
                             AudioSystem.write(inp, AudioFileFormat.Type.WAVE, audio);
                         } catch(IOException e) {
@@ -87,9 +96,10 @@ public class Main {
 
                 };
                 recorder.start();
-                Thread.sleep(10000);
+                Thread.sleep(5000);
                 tLine.stop();
                 tLine.close();
+                System.out.println("Ended recording.");
 
             }
 
@@ -98,6 +108,33 @@ public class Main {
         } catch(Exception e) {
 
         }
+    }
+
+    public static byte[] loadAsBytes(String name) {
+        assert name.contains(".wav");
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        File retrieve = new File(name);
+        try {
+            InputStream input = AudioSystem.getAudioInputStream(retrieve);
+
+            int read;
+            byte[] b = new byte[1024];
+            while ((read = input.read(b)) > 0) {
+                out.write(b, 0, read);
+            }
+            out.flush();
+            byte[] full = out.toByteArray();
+            return full;
+
+        } catch(UnsupportedAudioFileException e) {
+            System.err.println("The File " + name + " is unsupported on this system.");
+            e.printStackTrace();
+        } catch (IOException e) {
+            System.err.println("Input-Output Exception on retrieval of file " + name);
+            e.printStackTrace();
+        }
+        return null;
+
     }
 
 
