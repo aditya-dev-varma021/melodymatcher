@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.Arrays;
+import java.util.Scanner;
 
 public class Main {
 
@@ -12,11 +14,18 @@ public class Main {
 
     public static void main(String[] args) {
         openLines();
-        captureAudio();
-        byte[] in = loadAsBytes("input.wav");
-        System.out.println("Playing Audio...");
-        playAudio();
-        System.out.println("Audio finished.");
+        System.out.println("Enter 1 if you are ready to record.");
+        int input = new Scanner(System.in).nextInt();
+        if (input == 1) {
+            captureAudio();
+           byte[] in = loadAsBytes("rec.wav");
+            System.out.println(Arrays.toString(in));
+            /* System.out.println("Playing Audio...");
+            playAudio();
+            System.out.println("Audio finished."); */
+        } else {
+            System.exit(0);
+        }
 
     }
 
@@ -43,7 +52,7 @@ public class Main {
         }
 
         try {
-            URL sound = Main.class.getResource("input.wav");
+            URL sound = Main.class.getResource("rec.wav");
             AudioInputStream audioStream = AudioSystem.getAudioInputStream(sound);
             mainClip.open(audioStream);
         }catch(LineUnavailableException e) {
@@ -73,47 +82,40 @@ public class Main {
             if (!AudioSystem.isLineSupported(secure)) {
                 System.err.println("Unsupported Line");
             }
-            TargetDataLine tLine = (TargetDataLine)AudioSystem.getLine(secure);
-            System.out.println("TargetDataLine is " + tLine.toString());
-            int user = 0;
-            System.out.println("Are you ready to begin recording? (Enter '1')");
-            user = new java.util.Scanner(System.in).nextInt(); // generally do not advise ad-hoc scanner production like this
-            if (user == 1) {
-                System.out.println("Starting recording...");
-                tLine.open();
-                tLine.start();
-                Thread recorder = new Thread() {
-                    @Override public void run() {
-                        AudioInputStream inp = new AudioInputStream(tLine);
-                        File audio = new File("src/input.wav");
+            // TODO: Testing Zone Open
 
+            TargetDataLine tLine = (TargetDataLine)AudioSystem.getLine(secure);
+
+            // TODO: Testing Zone Closed
+            System.out.println("Starting recording...");
+            tLine.open(f);
+            tLine.start();
+            File writeTo = new File("input.wav");
+            Thread t = new Thread(){
+                    public void run() {
                         try {
-                            AudioSystem.write(inp, AudioFileFormat.Type.WAVE, audio);
+                            AudioInputStream is = new AudioInputStream(tLine);
+                            AudioSystem.write(is, AudioFileFormat.Type.WAVE, writeTo);
                         } catch(IOException e) {
+                            System.err.println("Encountered system I/O error in recording:");
                             e.printStackTrace();
                         }
                     }
-
-                };
-                recorder.start();
-                Thread.sleep(5000);
-                tLine.stop();
-                tLine.close();
-                System.out.println("Ended recording.");
-
-            }
-
-            
-
+            };
+            t.start();
+            Thread.sleep(7500);
+            tLine.stop();
+            tLine.close();
+            System.out.println("Recording has ended.");
         } catch(Exception e) {
-
+            e.printStackTrace();
         }
     }
 
     public static byte[] loadAsBytes(String name) {
         assert name.contains(".wav");
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        File retrieve = new File(name);
+        File retrieve = new File("src/"+ name);
         try {
             InputStream input = AudioSystem.getAudioInputStream(retrieve);
 
