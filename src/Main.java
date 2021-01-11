@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.Arrays;
-import java.util.Scanner;
 
 public class Main {
 
@@ -13,19 +11,7 @@ public class Main {
     public static Clip mainClip;
 
     public static void main(String[] args) {
-        openLines();
-        System.out.println("Enter 1 if you are ready to record.");
-        int input = new Scanner(System.in).nextInt();
-        if (input == 1) {
-            captureAudio();
-           byte[] in = loadAsBytes("rec.wav");
-            System.out.println(Arrays.toString(in));
-            /* System.out.println("Playing Audio...");
-            playAudio();
-            System.out.println("Audio finished."); */
-        } else {
-            System.exit(0);
-        }
+        playAudio();
 
     }
 
@@ -71,22 +57,20 @@ public class Main {
                 e.printStackTrace();
             }
         }while (mainClip.isActive());
+        System.out.println(mainClip.getLineInfo() + ":" + mainClip.getFrameLength());
     }
 
     /* Captures Audio clips using a TargetDataLine. */
     public static void captureAudio() {
         try {
-            AudioFormat f = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100, 16, 2, 4, 44100, false);
-            // WAVE files are Little-Endian
+            AudioFormat f = getAudioFormat();
             DataLine.Info secure = new DataLine.Info(TargetDataLine.class, f);
             if (!AudioSystem.isLineSupported(secure)) {
                 System.err.println("Unsupported Line");
             }
-            // TODO: Testing Zone Open
-
             TargetDataLine tLine = (TargetDataLine)AudioSystem.getLine(secure);
-
-            // TODO: Testing Zone Closed
+            System.err.println(tLine.toString());
+            System.err.println(tLine.getLineInfo());
             System.out.println("Starting recording...");
             tLine.open(f);
             tLine.start();
@@ -140,4 +124,40 @@ public class Main {
     }
 
 
+    public static Line obtainLine(String name) {
+        try {
+            Mixer.Info[] aggInfo = AudioSystem.getMixerInfo();
+            for (Mixer.Info i : aggInfo) {
+                Mixer e = AudioSystem.getMixer(i);
+                if (i.getName().equals(name)) {
+                    try {
+                        return e.getLine(e.getTargetLineInfo()[0]);
+                    } catch (LineUnavailableException lue) {
+                        lue.printStackTrace();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+   static AudioFormat getAudioFormat() {
+        float sampleRate = 22050;
+        int sampleSizeInBits = 8;
+        int channels = 2;
+        boolean signed = true;
+        boolean bigEndian = true;
+        AudioFormat format = new AudioFormat(sampleRate, sampleSizeInBits,
+                channels, signed, bigEndian);
+        return format;
+    }
+
+
+    public static void recordAudio() {
+
+    }
+
 }
+
