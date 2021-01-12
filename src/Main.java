@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
 
 public class Main {
 
@@ -11,7 +12,44 @@ public class Main {
     public static Clip mainClip;
 
     public static void main(String[] args) {
-        playAudio();
+        //recordAudio();
+        if (!soundless(loadAsBytes("input.wav"))) {
+            System.out.println("The recording has sound!");
+        }
+        AudioFormat f = new AudioFormat(48000, 16, 2, true, false);
+        //DataLine.Info inf = new DataLine.Info(SourceDataLine.class, f);
+        try {
+            TargetDataLine line = AudioSystem.getTargetDataLine(f);
+            DataLine.Info test = new DataLine.Info(TargetDataLine.class, f);
+            TargetDataLine other = (TargetDataLine)AudioSystem.getLine(test);
+            String output = line.equals(other) ? "Yes" : "No";
+            System.out.println(output);
+            System.out.println(line.toString());
+            for (Mixer.Info i : AudioSystem.getMixerInfo()) {
+                Line.Info[] tli = AudioSystem.getMixer(i).getTargetLineInfo();
+                if (tli.length != 0) {
+                   Line comp = AudioSystem.getLine(tli[0]);
+                    System.out.println(comp.toString() + ":" +i.getName());
+                   if (comp.equals(line)) {
+                       System.out.println("The TargetDataLine is from " + i.getName());
+                   }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+       /* for (Line.Info inf : allTDL()) {
+            recordAudio(inf);
+            try {
+                Thread.sleep(5000);
+            } catch(Exception e) {
+                e.printStackTrace();
+            }
+            if (!soundless(loadAsBytes("input.wav"))) {
+                System.out.println("The recording with " + inf.toString() + " has sound!");
+            }
+            System.out.println("The last recording with " + inf.toString() + " was soundless.");
+        } */
 
     }
 
@@ -154,10 +192,123 @@ public class Main {
         return format;
     }
 
+    static Line getCorrectLine() {
+        for (Mixer.Info i : AudioSystem.getMixerInfo()) {
+            Mixer m = AudioSystem.getMixer(i);
+            System.out.println(i.getName() + " : " + m.getTargetLineInfo().length);
+        }
+        return null;
 
-    public static void recordAudio() {
 
     }
+
+
+
+    static boolean soundless(byte[] s) {
+        if (s == null) {
+            return true;
+        }
+        for (int i = 0; i < s.length; i += 1) {
+            if (s[i] != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+
+
+   public static void recordAudio(Line.Info inf) {
+        System.out.println("Recording...");
+        AudioFormat f = new AudioFormat(48000, 16, 2, true, false);
+        //DataLine.Info inf = new DataLine.Info(SourceDataLine.class, f);
+        try {
+            final TargetDataLine line = (TargetDataLine)AudioSystem.getLine(inf);
+            Thread record = new Thread(){
+                public void run() {
+                    AudioInputStream inputStream = new AudioInputStream(line);
+                    File to = new File("src/input.wav");
+                    try {
+                        line.open(f);
+                        line.start();
+                        AudioSystem.write(inputStream, AudioFileFormat.Type.WAVE, to);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            record.start();
+            Thread.sleep(5000);
+            line.stop();
+            line.close();
+        } catch (LineUnavailableException lue) {
+            lue.printStackTrace();
+        } catch (ClassCastException cce) {
+            try {
+                System.out.println("Was unable to cast " + AudioSystem.getLine(inf).toString() + " to a TargetDataLine.");
+            } catch (LineUnavailableException lue2) {
+                lue2.printStackTrace();
+            }
+        } catch(InterruptedException ie) {
+            ie.printStackTrace();
+        }
+        System.out.println("End recording.");
+    }
+
+
+    public static void recordAudio() {
+        System.out.println("Recording...");
+        AudioFormat f = new AudioFormat(48000, 16, 2, true, false);
+        //DataLine.Info inf = new DataLine.Info(SourceDataLine.class, f);
+        try {
+            final TargetDataLine line = AudioSystem.getTargetDataLine(f);
+            System.err.println(line.getLineInfo() + "\n" + line.toString());
+            Thread record = new Thread(){
+                public void run() {
+                    AudioInputStream inputStream = new AudioInputStream(line);
+                    File to = new File("src/input.wav");
+                    try {
+                        line.open(f);
+                        line.start();
+                        AudioSystem.write(inputStream, AudioFileFormat.Type.WAVE, to);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            record.start();
+            Thread.sleep(5000);
+            line.stop();
+            line.close();
+        } catch (LineUnavailableException lue) {
+            lue.printStackTrace();
+        } catch (ClassCastException cce) {
+            try {
+                System.out.println("Was unable to cast " + AudioSystem.getTargetDataLine(f).toString() + " to a TargetDataLine.");
+            } catch (LineUnavailableException lue2) {
+                lue2.printStackTrace();
+            }
+        } catch(InterruptedException ie) {
+            ie.printStackTrace();
+        }
+        System.out.println("End recording.");
+    }
+
+    public static ArrayList<Line.Info> allTDL() {
+        ArrayList<Line.Info> all = new ArrayList<>();
+        for (Mixer.Info i : AudioSystem.getMixerInfo()) {
+            Line.Info[] tli = AudioSystem.getMixer(i).getTargetLineInfo();
+            if (tli.length != 0) {
+                for (int f = 0; f < tli.length; f += 1) {
+                    all.add(tli[f]);
+                }
+            }
+        }
+        return all;
+    }
+
+
+
 
 }
 
